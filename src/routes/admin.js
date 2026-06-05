@@ -38,7 +38,7 @@ router.post('/users/:id/balance', authenticate, adminOnly, async (req, res) => {
 
 // Reset balance
 router.post('/users/:id/reset', authenticate, adminOnly, async (req, res) => {
-  const { amount = 10000 } = req.body;
+  const { amount = 1000 } = req.body;
   await supabase.from('users').update({ balance: amount }).eq('id', req.params.id);
   await supabase.from('transactions').insert({
     user_id: req.params.id,

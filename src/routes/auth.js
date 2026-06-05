@@ -14,7 +14,7 @@ router.post('/register', async (req, res) => {
   const { data, error } = await supabase.from('users').insert({
     username,
     password: hashed,
-    balance: 10000,
+    balance: 0,
   }).select().single();
 
   if (error) return res.status(500).json({ error: error.message });
