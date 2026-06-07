@@ -5,18 +5,18 @@ const supabase = require('../supabase');
 // ─── Symbol Pools ─────────────────────────────────────────────
 // Balanced pool - skull reduced significantly
 const NORMAL_POOL = [
-  'skull','skull','skull',           // 3  (rare)
-  'shield','shield','shield','shield', // 4
-  'sword','sword','sword','sword','sword', // 5
-  'coin','coin','coin','coin','coin','coin', // 6
-  'fire','fire','fire','fire','fire','fire','fire', // 7
-  'gem','gem','gem','gem','gem','gem','gem','gem', // 8
-  'dragon','dragon', // 2 Wild
+  'skull','skull','skull','skull','skull','skull','skull','skull','skull','skull', // 10 (most common)
+  'shield','shield','shield','shield','shield','shield',  // 6
+  'sword','sword','sword','sword','sword',                // 5
+  'coin','coin','coin','coin',                            // 4
+  'fire','fire','fire',                                   // 3
+  'gem','gem',                                            // 2
+  'dragon',                                               // 1 Wild (~2%)
 ]
-// Total 35 — dragon=5.7%, gem=22.8%, fire=20%, coin=17%, skull=8.5%
+// Total 31 — dragon=3.2%, gem=6.4%, skull=32%, scatter ยากขึ้น
 
-const SCATTER_CHANCE = 0.05  // 5% per cell in normal spin
-const EGG_CHANCE     = 0.025 // 2.5% per cell in free spins
+const SCATTER_CHANCE = 0.025 // 2.5% per cell (ยากขึ้น 2x)
+const EGG_CHANCE     = 0.012 // 1.2% per cell in free spins (ยากขึ้น 2x)
 
 const EGG_POOL = [
   { sym: 'egg_red',     mult: 2,    w: 100 },
@@ -29,13 +29,13 @@ const EGG_TOTAL = EGG_POOL.reduce((a, b) => a + b.w, 0)
 
 // Payouts for 3/4/5 matching in a payline
 const PAY = {
-  dragon:  { 3:20,  4:80,  5:300  }, // Wild - ลดลง
-  gem:     { 3:8,   4:30,  5:100  },
-  fire:    { 3:5,   4:18,  5:60   },
-  coin:    { 3:3,   4:10,  5:30   },
-  sword:   { 3:2,   4:6,   5:18   },
-  shield:  { 3:1.5, 4:4,   5:12   },
-  skull:   { 3:1,   4:3,   5:8    }, // ต่ำสุด
+  dragon:  { 3:8,   4:25,  5:100  }, // Wild
+  gem:     { 3:3,   4:10,  5:40   },
+  fire:    { 3:2,   4:7,   5:25   },
+  coin:    { 3:1.5, 4:4,   5:12   },
+  sword:   { 3:1,   4:3,   5:8    },
+  shield:  { 3:0.8, 4:2,   5:5    },
+  skull:   { 3:0.5, 4:1.5, 5:4    }, // ต่ำสุด แทบไม่ได้อะไร
 }
 
 const WILD    = 'dragon'
@@ -156,9 +156,9 @@ router.post('/spin', authenticate, async (req, res) => {
   const { wins, totalWin, scatters, eggs } = evalGrid(grid, amount, 1)
 
   let freeSpinsAwarded = 0
-  if (scatters >= 5)      freeSpinsAwarded = 25
-  else if (scatters >= 4) freeSpinsAwarded = 15
-  else if (scatters >= 3) freeSpinsAwarded = 10
+  if (scatters >= 6)      freeSpinsAwarded = 15  // ต้องการ 6 ตัว
+  else if (scatters >= 5) freeSpinsAwarded = 10  // ต้องการ 5 ตัว
+  else if (scatters >= 4) freeSpinsAwarded = 7   // ต้องการ 4 ตัว (ยากมาก)
 
   const net = totalWin - amount
   const newBal = user.balance + net
@@ -181,9 +181,9 @@ router.post('/freespin', authenticate, async (req, res) => {
   const { wins, totalWin, scatters, eggMult, eggs } = evalGrid(grid, amount, freeMult)
 
   let retrigger = 0
-  if (scatters >= 5)      retrigger = 15
-  else if (scatters >= 4) retrigger = 10
-  else if (scatters >= 3) retrigger = 5
+  if (scatters >= 6)      retrigger = 8
+  else if (scatters >= 5) retrigger = 5
+  else if (scatters >= 4) retrigger = 3
 
   const newBal = totalWin > 0 ? user.balance + totalWin : user.balance
   if (totalWin > 0) {
