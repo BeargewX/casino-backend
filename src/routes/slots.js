@@ -29,13 +29,13 @@ const EGG_TOTAL = EGG_POOL.reduce((a, b) => a + b.w, 0)
 
 // Payouts for 3/4/5 matching in a payline
 const PAY = {
-  dragon:  { 3:75,  4:300, 5:1000 },
-  gem:     { 3:25,  4:100, 5:400  },
-  fire:    { 3:15,  4:60,  5:200  },
-  coin:    { 3:8,   4:30,  5:100  },
-  sword:   { 3:5,   4:15,  5:50   },
-  shield:  { 3:3,   4:10,  5:30   },
-  skull:   { 3:2,   4:6,   5:15   },
+  dragon:  { 3:20,  4:80,  5:300  }, // Wild - ลดลง
+  gem:     { 3:8,   4:30,  5:100  },
+  fire:    { 3:5,   4:18,  5:60   },
+  coin:    { 3:3,   4:10,  5:30   },
+  sword:   { 3:2,   4:6,   5:18   },
+  shield:  { 3:1.5, 4:4,   5:12   },
+  skull:   { 3:1,   4:3,   5:8    }, // ต่ำสุด
 }
 
 const WILD    = 'dragon'
