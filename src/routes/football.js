@@ -176,48 +176,49 @@ router.get('/live', authenticate, async (req, res) => {
   }
 })
 
+function makeMatch(id, home, away, h1, h2, h3, ou = 2.5, spread = -0.5) {
+  // h1=home win, h2=away win, h3=draw
+  // Auto-generate spreads and totals from h2h odds
+  const spreadHome = +(h1 * 0.95).toFixed(2)
+  const spreadAway = +(h2 * 0.92).toFixed(2)
+  const overOdds   = 1.90
+  const underOdds  = 1.90
+  return {
+    id, sport_key: 'soccer_fifa_world_cup',
+    commence_time: new Date(Date.now() + (id.slice(-1).charCodeAt(0) * 3600000)).toISOString(),
+    home_team: home, away_team: away,
+    bookmakers: [{ key: 'mock', title: 'MockBook', markets: [
+      { key: 'h2h', outcomes: [
+        { name: home,   price: h1 },
+        { name: away,   price: h2 },
+        { name: 'Draw', price: h3 },
+      ]},
+      { key: 'totals', outcomes: [
+        { name: 'Over',  price: overOdds,  point: ou },
+        { name: 'Under', price: underOdds, point: ou },
+      ]},
+      { key: 'spreads', outcomes: [
+        { name: home, price: spreadHome, point: spread      },
+        { name: away, price: spreadAway, point: -spread     },
+      ]},
+    ]}],
+  }
+}
+
 function getMockMatches() {
   return [
-    {
-      id: 'mock1', sport_key: 'soccer_fifa_world_cup',
-      commence_time: new Date(Date.now() + 3600000).toISOString(),
-      home_team: 'Brazil', away_team: 'Morocco',
-      bookmakers: [{ key: 'mock', title: 'MockBook', markets: [
-        { key: 'h2h', outcomes: [{ name: 'Brazil', price: 1.8 }, { name: 'Morocco', price: 4.5 }, { name: 'Draw', price: 3.2 }] },
-        { key: 'totals', outcomes: [{ name: 'Over', price: 1.9, point: 2.5 }, { name: 'Under', price: 1.9, point: 2.5 }] },
-        { key: 'spreads', outcomes: [{ name: 'Brazil', price: 1.85, point: -0.5 }, { name: 'Morocco', price: 1.95, point: 0.5 }] },
-      ]}],
-    },
-    {
-      id: 'mock2', sport_key: 'soccer_fifa_world_cup',
-      commence_time: new Date(Date.now() + 7200000).toISOString(),
-      home_team: 'France', away_team: 'Senegal',
-      bookmakers: [{ key: 'mock', title: 'MockBook', markets: [
-        { key: 'h2h', outcomes: [{ name: 'France', price: 1.7 }, { name: 'Senegal', price: 5.0 }, { name: 'Draw', price: 3.5 }] },
-        { key: 'totals', outcomes: [{ name: 'Over', price: 1.85, point: 2.5 }, { name: 'Under', price: 1.95, point: 2.5 }] },
-        { key: 'spreads', outcomes: [{ name: 'France', price: 1.9, point: -0.5 }, { name: 'Senegal', price: 1.9, point: 0.5 }] },
-      ]}],
-    },
-    {
-      id: 'mock3', sport_key: 'soccer_fifa_world_cup',
-      commence_time: new Date(Date.now() + 10800000).toISOString(),
-      home_team: 'Argentina', away_team: 'Algeria',
-      bookmakers: [{ key: 'mock', title: 'MockBook', markets: [
-        { key: 'h2h', outcomes: [{ name: 'Argentina', price: 1.6 }, { name: 'Algeria', price: 5.5 }, { name: 'Draw', price: 3.8 }] },
-        { key: 'totals', outcomes: [{ name: 'Over', price: 1.88, point: 2.5 }, { name: 'Under', price: 1.92, point: 2.5 }] },
-        { key: 'spreads', outcomes: [{ name: 'Argentina', price: 1.87, point: -0.5 }, { name: 'Algeria', price: 1.93, point: 0.5 }] },
-      ]}],
-    },
-    {
-      id: 'mock4', sport_key: 'soccer_fifa_world_cup',
-      commence_time: new Date(Date.now() + 14400000).toISOString(),
-      home_team: 'Spain', away_team: 'Uruguay',
-      bookmakers: [{ key: 'mock', title: 'MockBook', markets: [
-        { key: 'h2h', outcomes: [{ name: 'Spain', price: 1.9 }, { name: 'Uruguay', price: 4.0 }, { name: 'Draw', price: 3.3 }] },
-        { key: 'totals', outcomes: [{ name: 'Over', price: 1.88, point: 2.5 }, { name: 'Under', price: 1.92, point: 2.5 }] },
-        { key: 'spreads', outcomes: [{ name: 'Spain', price: 1.85, point: -0.5 }, { name: 'Uruguay', price: 1.95, point: 0.5 }] },
-      ]}],
-    },
+    makeMatch('mock_a', 'Brazil',    'Morocco',      1.75, 4.80, 3.40, 2.5, -0.5),
+    makeMatch('mock_b', 'France',    'Senegal',      1.65, 5.20, 3.60, 2.5, -0.5),
+    makeMatch('mock_c', 'Argentina', 'Algeria',      1.55, 6.00, 3.80, 2.5, -1.0),
+    makeMatch('mock_d', 'Spain',     'Uruguay',      1.85, 4.20, 3.30, 2.5, -0.5),
+    makeMatch('mock_e', 'England',   'Ghana',        1.60, 5.50, 3.70, 2.5, -0.5),
+    makeMatch('mock_f', 'Germany',   'Ecuador',      1.70, 4.60, 3.50, 2.5, -0.5),
+    makeMatch('mock_g', 'Portugal',  'Colombia',     1.80, 4.30, 3.40, 2.5, -0.5),
+    makeMatch('mock_h', 'Netherlands','Japan',       1.90, 4.00, 3.30, 2.5, -0.5),
+    makeMatch('mock_i', 'Mexico',    'South Korea',  2.20, 3.40, 3.10, 2.5,  0.0),
+    makeMatch('mock_j', 'USA',       'Australia',    2.10, 3.60, 3.20, 2.5,  0.0),
+    makeMatch('mock_k', 'Belgium',   'Morocco',      1.95, 3.90, 3.25, 2.5, -0.5),
+    makeMatch('mock_l', 'Croatia',   'Canada',       2.00, 3.80, 3.20, 2.5,  0.0),
   ]
 }
 
