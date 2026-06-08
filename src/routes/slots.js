@@ -16,8 +16,8 @@ const NORMAL_POOL = [
 ]
 // Total 46 — dragon=2.1%, gem=6.5%, skull=43%
 
-const SCATTER_CHANCE = 0.012 // 1.2% per cell (ยากมาก)
-const EGG_CHANCE     = 0.006 // 0.6% per cell in free spins (หายากมาก)
+const SCATTER_CHANCE = 0.024 // 2.4% per cell
+const EGG_CHANCE     = 0.012 // 1.2% per cell in free spins
 
 const EGG_POOL = [
   { sym: 'egg_red',     mult: 2,    w: 100 },
@@ -30,13 +30,13 @@ const EGG_TOTAL = EGG_POOL.reduce((a, b) => a + b.w, 0)
 
 // Payouts for 3/4/5 matching in a payline
 const PAY = {
-  dragon:  { 3:0.8, 4:2.5, 5:10  }, // Wild
-  gem:     { 3:0.3, 4:1.0, 5:4.0 },
-  fire:    { 3:0.2, 4:0.7, 5:2.5 },
-  coin:    { 3:0.15,4:0.4, 5:1.2 },
-  sword:   { 3:0.1, 4:0.3, 5:0.8 },
-  shield:  { 3:0.08,4:0.2, 5:0.5 },
-  skull:   { 3:0.05,4:0.15,5:0.4 }, // แทบไม่ได้เงินเลย
+  dragon:  { 3:1.6, 4:5.0, 5:20  }, // Wild x2
+  gem:     { 3:0.6, 4:2.0, 5:8.0 },
+  fire:    { 3:0.4, 4:1.4, 5:5.0 },
+  coin:    { 3:0.3, 4:0.8, 5:2.4 },
+  sword:   { 3:0.2, 4:0.6, 5:1.6 },
+  shield:  { 3:0.16,4:0.4, 5:1.0 },
+  skull:   { 3:0.1, 4:0.3, 5:0.8 },
 }
 
 const WILD    = 'dragon'
