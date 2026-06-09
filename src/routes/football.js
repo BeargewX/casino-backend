@@ -27,6 +27,36 @@ function afHeaders(apiKey) {
   return { 'x-apisports-key': apiKey, 'x-rapidapi-host': 'v3.football.api-sports.io' }
 }
 
+// Fill missing markets — ทุกคู่จะมีครบ 3 market เสมอ
+function fillMissingMarkets(matches) {
+  return matches.map(match => {
+    const bm = match.bookmakers?.[0]
+    if (!bm) return match
+    const h2h     = bm.markets?.find(m => m.key === 'h2h')
+    const totals  = bm.markets?.find(m => m.key === 'totals')
+    const spreads = bm.markets?.find(m => m.key === 'spreads')
+    if (!h2h) return match
+    const homeOdds = h2h.outcomes?.find(o => o.name === match.home_team)?.price || 2.0
+    const awayOdds = h2h.outcomes?.find(o => o.name === match.away_team)?.price || 2.0
+    const markets = [...(bm.markets || [])]
+    if (!totals) {
+      markets.push({ key: 'totals', outcomes: [
+        { name: 'Over',  price: 1.90, point: 2.5 },
+        { name: 'Under', price: 1.90, point: 2.5 },
+      ]})
+    }
+    if (!spreads) {
+      const diff = homeOdds - awayOdds
+      const spread = diff > 1.5 ? -1.5 : diff > 0.5 ? -1.0 : diff > 0 ? -0.5 : 0
+      markets.push({ key: 'spreads', outcomes: [
+        { name: match.home_team, price: +(homeOdds * 0.93).toFixed(2), point: spread  },
+        { name: match.away_team, price: +(awayOdds * 0.93).toFixed(2), point: -spread },
+      ]})
+    }
+    return { ...match, bookmakers: [{ ...bm, markets }] }
+  })
+}
+
 // GET squad by team name
 router.get('/squad/:teamName', authenticate, async (req, res) => {
   const teamName = decodeURIComponent(req.params.teamName)
@@ -39,25 +69,17 @@ router.get('/squad/:teamName', authenticate, async (req, res) => {
   }
 
   const apiKey = AF_KEY()
-
   try {
     const resp = await axios.get(`${AF_BASE}/players/squads`, {
       params: { team: teamId },
       headers: afHeaders(apiKey),
     })
-
     const squadData = resp.data?.response?.[0]
     if (!squadData) return res.status(404).json({ error: 'No squad data' })
-
     const players = squadData.players.map(p => ({
-      id: p.id,
-      name: p.name,
-      age: p.age,
-      number: p.number,
-      position: p.position,
-      photo: p.photo,
+      id: p.id, name: p.name, age: p.age,
+      number: p.number, position: p.position, photo: p.photo,
     }))
-
     const result = { teamId, teamName, players }
     squadCache[cacheKey] = { ts: Date.now(), data: result }
     res.json(result)
@@ -67,64 +89,49 @@ router.get('/squad/:teamName', authenticate, async (req, res) => {
   }
 })
 
-// GET lineup จริงตอนบอลเริ่ม (ใช้ fixtureId จาก /fixtures)
+// GET lineup จริงตอนบอลเริ่ม
 router.get('/lineup/:fixtureId', authenticate, async (req, res) => {
   const apiKey = AF_KEY()
-
   const cacheKey = `lineup_${req.params.fixtureId}`
   if (squadCache[cacheKey] && Date.now() - squadCache[cacheKey].ts < 1800000) {
     return res.json(squadCache[cacheKey].data)
   }
-
   try {
     const resp = await axios.get(`${AF_BASE}/fixtures/lineups`, {
       params: { fixture: req.params.fixtureId },
       headers: afHeaders(apiKey),
     })
-
     const lineups = resp.data?.response || []
-    if (!lineups.length) {
-      return res.json({ available: false, message: 'Lineup not announced yet' })
-    }
-
+    if (!lineups.length) return res.json({ available: false, message: 'Lineup not announced yet' })
     const result = lineups.map(team => ({
       available: true,
       teamId: team.team.id,
       teamName: team.team.name,
-      formation: team.formation, // เช่น "4-3-3"
+      formation: team.formation,
       startXI: team.startXI.map(p => ({
-        id: p.player.id,
-        name: p.player.name,
-        number: p.player.number,
-        position: p.player.pos, // G / D / M / F
-        grid: p.player.grid,    // เช่น "2:3" → row:col วางบนสนามได้เลย
+        id: p.player.id, name: p.player.name, number: p.player.number,
+        position: p.player.pos, grid: p.player.grid,
         photo: `https://media.api-sports.io/football/players/${p.player.id}.png`,
       })),
       substitutes: team.substitutes.map(p => ({
-        id: p.player.id,
-        name: p.player.name,
-        number: p.player.number,
+        id: p.player.id, name: p.player.name, number: p.player.number,
         position: p.player.pos,
         photo: `https://media.api-sports.io/football/players/${p.player.id}.png`,
       })),
     }))
-
     squadCache[cacheKey] = { ts: Date.now(), data: result }
     res.json(result)
   } catch (err) {
-    console.error('Lineup error:', err.message)
     res.status(500).json({ error: 'Failed to fetch lineup' })
   }
 })
 
-// GET World Cup fixtures (league=1, season=2026)
+// GET World Cup fixtures
 router.get('/fixtures', authenticate, async (req, res) => {
-  const apiKey = AF_KEY()
-
   try {
     const resp = await axios.get(`${AF_BASE}/fixtures`, {
       params: { league: 1, season: 2026 },
-      headers: afHeaders(apiKey),
+      headers: afHeaders(AF_KEY()),
     })
     res.json(resp.data?.response || [])
   } catch (err) {
@@ -132,14 +139,12 @@ router.get('/fixtures', authenticate, async (req, res) => {
   }
 })
 
-// GET standings (groups A-L)
+// GET standings
 router.get('/standings', authenticate, async (req, res) => {
-  const apiKey = AF_KEY()
-
   try {
     const resp = await axios.get(`${AF_BASE}/standings`, {
       params: { league: 1, season: 2026 },
-      headers: afHeaders(apiKey),
+      headers: afHeaders(AF_KEY()),
     })
     res.json(resp.data?.response || [])
   } catch (err) {
@@ -147,7 +152,7 @@ router.get('/standings', authenticate, async (req, res) => {
   }
 })
 
-// GET betting odds
+// GET betting odds — fillMissingMarkets ทำให้ทุกคู่มีครบ 3 market
 router.get('/matches', authenticate, async (req, res) => {
   try {
     const resp = await axios.get(`${ODDS_BASE}/sports/soccer_fifa_world_cup/odds`, {
@@ -158,7 +163,7 @@ router.get('/matches', authenticate, async (req, res) => {
         oddsFormat: 'decimal',
       },
     })
-    res.json(resp.data)
+    res.json(fillMissingMarkets(resp.data))
   } catch {
     res.json(getMockMatches())
   }
@@ -177,12 +182,8 @@ router.get('/live', authenticate, async (req, res) => {
 })
 
 function makeMatch(id, home, away, h1, h2, h3, ou = 2.5, spread = -0.5) {
-  // h1=home win, h2=away win, h3=draw
-  // Auto-generate spreads and totals from h2h odds
   const spreadHome = +(h1 * 0.95).toFixed(2)
   const spreadAway = +(h2 * 0.92).toFixed(2)
-  const overOdds   = 1.90
-  const underOdds  = 1.90
   return {
     id, sport_key: 'soccer_fifa_world_cup',
     commence_time: new Date(Date.now() + (id.slice(-1).charCodeAt(0) * 3600000)).toISOString(),
@@ -194,12 +195,12 @@ function makeMatch(id, home, away, h1, h2, h3, ou = 2.5, spread = -0.5) {
         { name: 'Draw', price: h3 },
       ]},
       { key: 'totals', outcomes: [
-        { name: 'Over',  price: overOdds,  point: ou },
-        { name: 'Under', price: underOdds, point: ou },
+        { name: 'Over',  price: 1.90, point: ou },
+        { name: 'Under', price: 1.90, point: ou },
       ]},
       { key: 'spreads', outcomes: [
-        { name: home, price: spreadHome, point: spread      },
-        { name: away, price: spreadAway, point: -spread     },
+        { name: home, price: spreadHome, point: spread  },
+        { name: away, price: spreadAway, point: -spread },
       ]},
     ]}],
   }
@@ -207,18 +208,18 @@ function makeMatch(id, home, away, h1, h2, h3, ou = 2.5, spread = -0.5) {
 
 function getMockMatches() {
   return [
-    makeMatch('mock_a', 'Brazil',    'Morocco',      1.75, 4.80, 3.40, 2.5, -0.5),
-    makeMatch('mock_b', 'France',    'Senegal',      1.65, 5.20, 3.60, 2.5, -0.5),
-    makeMatch('mock_c', 'Argentina', 'Algeria',      1.55, 6.00, 3.80, 2.5, -1.0),
-    makeMatch('mock_d', 'Spain',     'Uruguay',      1.85, 4.20, 3.30, 2.5, -0.5),
-    makeMatch('mock_e', 'England',   'Ghana',        1.60, 5.50, 3.70, 2.5, -0.5),
-    makeMatch('mock_f', 'Germany',   'Ecuador',      1.70, 4.60, 3.50, 2.5, -0.5),
-    makeMatch('mock_g', 'Portugal',  'Colombia',     1.80, 4.30, 3.40, 2.5, -0.5),
-    makeMatch('mock_h', 'Netherlands','Japan',       1.90, 4.00, 3.30, 2.5, -0.5),
-    makeMatch('mock_i', 'Mexico',    'South Korea',  2.20, 3.40, 3.10, 2.5,  0.0),
-    makeMatch('mock_j', 'USA',       'Australia',    2.10, 3.60, 3.20, 2.5,  0.0),
-    makeMatch('mock_k', 'Belgium',   'Morocco',      1.95, 3.90, 3.25, 2.5, -0.5),
-    makeMatch('mock_l', 'Croatia',   'Canada',       2.00, 3.80, 3.20, 2.5,  0.0),
+    makeMatch('mock_a', 'Brazil',      'Morocco',      1.75, 4.80, 3.40, 2.5, -0.5),
+    makeMatch('mock_b', 'France',      'Senegal',      1.65, 5.20, 3.60, 2.5, -0.5),
+    makeMatch('mock_c', 'Argentina',   'Algeria',      1.55, 6.00, 3.80, 2.5, -1.0),
+    makeMatch('mock_d', 'Spain',       'Uruguay',      1.85, 4.20, 3.30, 2.5, -0.5),
+    makeMatch('mock_e', 'England',     'Ghana',        1.60, 5.50, 3.70, 2.5, -0.5),
+    makeMatch('mock_f', 'Germany',     'Ecuador',      1.70, 4.60, 3.50, 2.5, -0.5),
+    makeMatch('mock_g', 'Portugal',    'Colombia',     1.80, 4.30, 3.40, 2.5, -0.5),
+    makeMatch('mock_h', 'Netherlands', 'Japan',        1.90, 4.00, 3.30, 2.5, -0.5),
+    makeMatch('mock_i', 'Mexico',      'South Korea',  2.20, 3.40, 3.10, 2.5,  0.0),
+    makeMatch('mock_j', 'USA',         'Australia',    2.10, 3.60, 3.20, 2.5,  0.0),
+    makeMatch('mock_k', 'Belgium',     'Morocco',      1.95, 3.90, 3.25, 2.5, -0.5),
+    makeMatch('mock_l', 'Croatia',     'Canada',       2.00, 3.80, 3.20, 2.5,  0.0),
   ]
 }
 
